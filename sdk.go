@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	sailpoint "github.com/sailpoint-oss/golang-sdk/v2"
-	v3 "github.com/sailpoint-oss/golang-sdk/v2/api_v3"
+	sailpoint "github.com/sailpoint-oss/golang-sdk/v3"
+	api_accounts "github.com/sailpoint-oss/golang-sdk/v3/accounts"
 )
 
 func main() {
@@ -19,25 +19,23 @@ func main() {
 	apiClient := sailpoint.NewAPIClient(configuration)
 	configuration.HTTPClient.RetryMax = 10
 
-	getBeta(ctx, apiClient)
+	getResults(ctx, apiClient)
 
 	//getAllPaginatedResults(ctx, apiClient)
 
 }
 
 func getResults(ctx context.Context, apiClient *sailpoint.APIClient) {
-	resp, r, err := apiClient.V3.AccountsAPI.ListAccounts(ctx).Execute()
+	resp, r, err := apiClient.AccountsAPI.ListAccountsV1(ctx).Execute()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when calling `AccountsAPI.ListAccount``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error when calling `AccountsAPI.ListAccountsV1`: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `ListAccounts`: []Account
-	fmt.Fprintf(os.Stdout, "First response from `AccountsAPI.ListAccount`: %v\n", resp[0].Name)
+	// response from `ListAccountsV1`: []Account
+	fmt.Fprintf(os.Stdout, "First response from `AccountsAPI.ListAccountsV1`: %v\n", resp[0].Name)
 }
 
 func getSearchResults(ctx context.Context, apiClient *sailpoint.APIClient) {
-	search := v3.NewSearchWithDefaults()
-	search.Indices = append(search.Indices, "identities")
 	searchString := []byte(`
 	{
 	"indices": [
@@ -51,44 +49,32 @@ func getSearchResults(ctx context.Context, apiClient *sailpoint.APIClient) {
     ]
 	}
 	  `)
-	search.UnmarshalJSON(searchString)
-	resp, r, err := sailpoint.PaginateSearchApi(ctx, apiClient, *search, 0, 10, 10000)
+	resp, r, err := apiClient.Generic.DefaultAPI.GenericPost(ctx, "search/v1").RequestBody(map[string]interface{}{}).Execute()
+	_ = searchString
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when calling `AccountsAPI.ListAccount``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error when calling `SearchAPI.SearchPost`: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `search`
-	for i := 0; i < len(resp); i++ {
-		fmt.Println(resp[i]["name"])
-	}
+	b, _ := json.Marshal(resp)
+	fmt.Fprintf(os.Stdout, "Search results: %v\n", string(b))
 }
 
 func getTransformResults(ctx context.Context, apiClient *sailpoint.APIClient) {
-	resp, r, err := apiClient.V3.TransformsAPI.ListTransforms(ctx).Execute()
+	resp, r, err := apiClient.TransformsAPI.ListTransformsV1(ctx).Execute()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when calling `TransformsAPI.GetTransformsList``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error when calling `TransformsAPI.ListTransformsV1`: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
 	b, _ := json.Marshal(resp[0].Attributes)
-	fmt.Fprintf(os.Stdout, "First response from `TransformsAPI.GetTransformsList`: %v\n", string(b))
+	fmt.Fprintf(os.Stdout, "First response from `TransformsAPI.ListTransformsV1`: %v\n", string(b))
 }
 
 func getAllPaginatedResults(ctx context.Context, apiClient *sailpoint.APIClient) {
-	resp, r, err := sailpoint.PaginateWithDefaults[v3.Account](apiClient.V3.AccountsAPI.ListAccounts(ctx))
+	resp, r, err := sailpoint.PaginateWithDefaults[api_accounts.Account](apiClient.AccountsAPI.ListAccountsV1(ctx))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when calling `AccountsAPI.ListAccount``: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error when calling `AccountsAPI.ListAccountsV1`: %v\n", err)
 		fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
 	}
-	// response from `ListAccounts`: []Account
-	fmt.Fprintf(os.Stdout, "First response from `AccountsAPI.ListAccount`: %v\n", resp[0].Name)
-}
-
-func getBeta(ctx context.Context, apiClient *sailpoint.APIClient) {
-	resp, _, err := apiClient.Beta.AccountsAPI.ListAccounts(context.TODO()).Execute()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error when calling `AccountsAPI.ListAccount``: %v\n", err)
-		//fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
-	}
-	// response from `ListAccounts`: []Account
-	fmt.Fprintf(os.Stdout, "First response from `AccountsAPI.ListAccount`: %v\n", resp)
+	// response from `ListAccountsV1`: []Account
+	fmt.Fprintf(os.Stdout, "First response from `AccountsAPI.ListAccountsV1`: %v\n", resp[0].Name)
 }
